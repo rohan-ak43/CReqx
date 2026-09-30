@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Star, ChevronRight, RefreshCw, Film, Disc, Clapperboard, Globe, Zap, Target, Moon, User, Heart, Users, Home } from 'lucide-react';
+import { Star, ChevronRight, RefreshCw, Film, Disc, Clapperboard, Globe, Zap, Target, Moon, User, Heart, Users, Home, History } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { tmdbService } from '../lib/tmdb';
 import { MovieCard } from '../components/movie/MovieCard';
 import { MovieGridSkeleton } from '../components/ui/LoadingSkeleton';
 import type { DiscoverParams } from '../lib/tmdb';
+import { useAuth } from '../context/AuthContext';
+import { saveRecommendationHistory, getRecommendationHistory, type RecommendationHistoryDoc } from '../lib/firestoreService';
+import { toast } from '../components/ui/Toast';
 
 const questions = [
   {
@@ -71,22 +74,46 @@ function answersToDiscoverParams(answers: Record<string, string>): DiscoverParam
 }
 
 export function RecommendationEngine() {
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [step, setStep] = useState(0);
+  const { user } = useAuth();
+
+  const [answers, setAnswers]         = useState<Record<string, string>>({});
+  const [step, setStep]               = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [finalParams, setFinalParams] = useState<DiscoverParams | null>(null);
+  const [savedAnswers, setSavedAnswers] = useState<Record<string, string>>({});
 
-  const current = questions[step];
+  // UI state for recommendation history panel
+  const [showHistory, setShowHistory] = useState(false);
+
+  const current  = questions[step];
   const progress = (step / questions.length) * 100;
 
+  // ── Fetch recommendations from TMDB (unchanged ML logic) ───────────────────
   const { data, isLoading } = useQuery({
     queryKey: ['recommendations', finalParams],
-    queryFn: () => tmdbService.discover({ ...finalParams!, page: 1 }),
-    enabled: showResults && !!finalParams,
+    queryFn:  () => tmdbService.discover({ ...finalParams!, page: 1 }),
+    enabled:  showResults && !!finalParams,
     staleTime: 5 * 60 * 1000,
   });
 
   const results = data?.movies ?? [];
+
+  // ── Save to Firestore once results arrive ─────────────────────────────────
+  const [savedThisSession, setSavedThisSession] = useState(false);
+  if (showResults && !isLoading && results.length > 0 && user && !savedThisSession) {
+    setSavedThisSession(true);
+    saveRecommendationHistory(user.uid, results.slice(0, 9), savedAnswers).catch((e) =>
+      console.error('[RecommendationEngine] saveRecommendationHistory:', e)
+    );
+  }
+
+  // ── Fetch past recommendation history ─────────────────────────────────────
+  const { data: historyData, isLoading: historyLoading } = useQuery({
+    queryKey: ['recommendation-history', user?.uid],
+    queryFn:  () => getRecommendationHistory(user!.uid, 10),
+    enabled:  showHistory && !!user,
+    staleTime: 2 * 60 * 1000,
+  });
 
   const handleAnswer = (value: string) => {
     const newAnswers = { ...answers, [current.id]: value };
@@ -94,8 +121,10 @@ export function RecommendationEngine() {
     if (step < questions.length - 1) {
       setStep(step + 1);
     } else {
+      setSavedAnswers(newAnswers);
       setFinalParams(answersToDiscoverParams(newAnswers));
       setShowResults(true);
+      setSavedThisSession(false);
     }
   };
 
@@ -104,10 +133,78 @@ export function RecommendationEngine() {
     setStep(0);
     setShowResults(false);
     setFinalParams(null);
+    setSavedThisSession(false);
   };
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-14">
+      {/* History toggle — only visible when signed in */}
+      {user && (
+        <div className="mb-6 flex justify-end">
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-void-800 px-4 py-2 text-sm text-mist-400 hover:text-mist-100 transition-colors"
+          >
+            <History className="h-3.5 w-3.5" />
+            {showHistory ? 'Hide history' : 'Past recommendations'}
+          </button>
+        </div>
+      )}
+
+      {/* ── Past Recommendations Panel ─────────────────────────────────────── */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            key="rec-history"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden mb-10"
+          >
+            <div className="glass rounded-2xl p-6">
+              <h2 className="font-display text-lg font-bold text-mist-100 mb-4 flex items-center gap-2">
+                <History className="h-4 w-4 text-dusk-400" /> Past Recommendations
+              </h2>
+
+              {historyLoading ? (
+                <p className="text-sm text-mist-500">Loading…</p>
+              ) : !historyData || historyData.length === 0 ? (
+                <p className="text-sm text-mist-500">No recommendation history yet.</p>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {historyData.map((rec: RecommendationHistoryDoc, idx: number) => (
+                    <div key={idx} className="rounded-xl border border-white/5 bg-void-800/40 p-4">
+                      <p className="mb-2 text-xs text-mist-500">
+                        {rec.recommendedAt?.toDate?.()?.toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                        }) ?? '—'}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {rec.movies.slice(0, 5).map((m) => (
+                          <Link
+                            key={m.id}
+                            to={`/movies/${m.id}`}
+                            className="flex items-center gap-2 rounded-lg bg-void-700 px-2.5 py-1.5 text-xs font-medium text-mist-200 hover:text-ember-300 transition-colors"
+                          >
+                            {m.title}
+                          </Link>
+                        ))}
+                        {rec.movies.length > 5 && (
+                          <span className="flex items-center rounded-lg bg-void-700 px-2.5 py-1.5 text-xs text-mist-500">
+                            +{rec.movies.length - 5} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Questionnaire / Results ────────────────────────────────────────── */}
       <AnimatePresence mode="wait">
         {!showResults ? (
           <motion.div
@@ -181,6 +278,13 @@ export function RecommendationEngine() {
                 <RefreshCw className="h-3.5 w-3.5" /> Start over
               </button>
             </div>
+
+            {/* Saved indicator */}
+            {user && !isLoading && results.length > 0 && (
+              <p className="mb-4 text-xs text-dusk-400 flex items-center gap-1">
+                <History className="h-3 w-3" /> Saved to your recommendation history
+              </p>
+            )}
 
             {isLoading ? (
               <MovieGridSkeleton count={6} />

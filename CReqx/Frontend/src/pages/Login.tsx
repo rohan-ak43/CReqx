@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock } from 'lucide-react';
 import { AuthLayout, SocialAuthButtons } from '../components/auth/AuthLayout';
 import { toast } from '../components/ui/Toast';
+import { useAuth } from '../context/AuthContext';
 
 interface LoginValues {
     email: string;
@@ -11,12 +12,24 @@ interface LoginValues {
 
 export function Login() {
     const navigate = useNavigate();
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginValues>();
+    const { signIn } = useAuth();
+    const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<LoginValues>();
 
-    async function onSubmit() {
-        await new Promise((r) => setTimeout(r, 500));
-        toast('Welcome back!');
-        navigate('/');
+    async function onSubmit({ email, password }: LoginValues) {
+        try {
+            await signIn(email, password);
+            toast('Welcome back!');
+            navigate('/');
+        } catch (err: unknown) {
+            const code = (err as { code?: string }).code ?? '';
+            if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+                setError('password', { message: 'Invalid email or password' });
+            } else if (code === 'auth/too-many-requests') {
+                toast('Too many attempts. Please wait and try again.', 'error');
+            } else {
+                toast('Sign-in failed. Please try again.', 'error');
+            }
+        }
     }
 
     return (

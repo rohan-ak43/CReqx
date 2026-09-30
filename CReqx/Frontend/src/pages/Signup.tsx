@@ -5,6 +5,7 @@ import { Mail, Lock, User } from 'lucide-react';
 import { AuthLayout, SocialAuthButtons } from '../components/auth/AuthLayout';
 import { toast } from '../components/ui/Toast';
 import { cn } from '../lib/utils';
+import { useAuth } from '../context/AuthContext';
 
 interface SignupValues {
     name: string;
@@ -26,14 +27,26 @@ const colors = ['bg-void-600', 'bg-ember-500', 'bg-gilt-400', 'bg-dusk-500', 'bg
 
 export function Signup() {
     const navigate = useNavigate();
+    const { signUp } = useAuth();
     const [password, setPassword] = useState('');
     const strength = useMemo(() => strengthOf(password), [password]);
-    const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<SignupValues>();
+    const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<SignupValues>();
 
-    async function onSubmit() {
-        await new Promise((r) => setTimeout(r, 500));
-        toast('Account created — welcome to CReqx!');
-        navigate('/');
+    async function onSubmit({ name, email, password }: SignupValues) {
+        try {
+            await signUp(email, password, name);
+            toast('Account created — welcome to CReqx!');
+            navigate('/');
+        } catch (err: unknown) {
+            const code = (err as { code?: string }).code ?? '';
+            if (code === 'auth/email-already-in-use') {
+                setError('email', { message: 'An account with this email already exists' });
+            } else if (code === 'auth/weak-password') {
+                setError('password', { message: 'Password is too weak' });
+            } else {
+                toast('Sign-up failed. Please try again.', 'error');
+            }
+        }
     }
 
     return (

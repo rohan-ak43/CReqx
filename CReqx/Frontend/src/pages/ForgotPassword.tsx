@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { Mail, CheckCircle2 } from 'lucide-react';
 import { AuthLayout } from '../components/auth/AuthLayout';
+import { toast } from '../components/ui/Toast';
+import { useAuth } from '../context/AuthContext';
 
 interface Values {
     email: string;
@@ -10,11 +12,22 @@ interface Values {
 
 export function ForgotPassword() {
     const [sent, setSent] = useState(false);
+    const { resetPassword } = useAuth();
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<Values>();
 
-    async function onSubmit() {
-        await new Promise((r) => setTimeout(r, 500));
-        setSent(true);
+    async function onSubmit({ email }: Values) {
+        try {
+            await resetPassword(email);
+            setSent(true);
+        } catch (err: unknown) {
+            const code = (err as { code?: string }).code ?? '';
+            if (code === 'auth/user-not-found') {
+                // Security: don't reveal whether email exists — show success anyway
+                setSent(true);
+            } else {
+                toast('Failed to send reset link. Please try again.', 'error');
+            }
+        }
     }
 
     return (

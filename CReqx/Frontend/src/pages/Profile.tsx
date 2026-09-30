@@ -1,12 +1,20 @@
 import { motion } from 'framer-motion';
-import { Heart, Clock, Star, Settings, Camera } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Heart, Clock, Star, Settings, LogOut } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import { useAuth } from '../context/AuthContext';
+import { toast } from '../components/ui/Toast';
 
 const GENRES = ['Action', 'Sci-Fi', 'Drama', 'Thriller', 'Comedy', 'Romance', 'Animation', 'Horror'];
 
 export function Profile() {
   const { favorites, history } = useAppStore();
+  const { user, profile, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const displayName  = profile?.name  ?? user?.displayName ?? 'Guest';
+  const displayEmail = profile?.email ?? user?.email       ?? '';
+  const initials     = displayName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 
   const topGenres = (() => {
     const counts: Record<string, number> = {};
@@ -15,6 +23,16 @@ export function Profile() {
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([g]) => g);
   })();
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+      toast('Signed out successfully');
+      navigate('/login');
+    } catch {
+      toast('Failed to sign out', 'error');
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-12">
@@ -28,17 +46,17 @@ export function Profile() {
           {/* Avatar */}
           <div className="relative">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-ember-500 to-dusk-500 text-3xl font-bold text-white ring-4 ring-void-800">
-              R
+              {initials}
             </div>
-            <button className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-void-700 ring-2 ring-void-900 hover:bg-void-600 transition-colors">
-              <Camera className="h-4 w-4 text-mist-300" />
-            </button>
           </div>
 
           <div className="flex-1 text-center sm:text-left">
-            <h1 className="font-display text-2xl font-bold text-mist-100">Rohan</h1>
-            <p className="text-sm text-mist-500">rohan@email.com</p>
-            <p className="mt-2 text-sm text-mist-400">Movie enthusiast · Member since 2024</p>
+            <h1 className="font-display text-2xl font-bold text-mist-100">{displayName}</h1>
+            <p className="text-sm text-mist-500">{displayEmail}</p>
+            {profile?.username && (
+              <p className="mt-0.5 text-sm text-mist-400">@{profile.username}</p>
+            )}
+            <p className="mt-1.5 text-sm text-mist-400">Movie enthusiast</p>
             <div className="mt-4 flex flex-wrap justify-center gap-4 sm:justify-start">
               <div className="text-center">
                 <p className="text-xl font-bold font-display text-mist-100">{history.length}</p>
@@ -46,7 +64,7 @@ export function Profile() {
               </div>
               <div className="text-center">
                 <p className="text-xl font-bold font-display text-mist-100">{favorites.length}</p>
-                <p className="text-xs text-mist-500">Favorites</p>
+                <p className="text-xs text-mist-500">Watchlist</p>
               </div>
               <div className="text-center">
                 <p className="text-xl font-bold font-display text-mist-100">{topGenres[0] ?? '—'}</p>
@@ -55,9 +73,27 @@ export function Profile() {
             </div>
           </div>
 
-          <button className="flex items-center gap-2 rounded-full bg-void-700 px-4 py-2 text-sm font-medium text-mist-300 ring-1 ring-white/10 hover:bg-void-600 transition-all">
-            <Settings className="h-4 w-4" /> Edit Profile
-          </button>
+          <div className="flex flex-col gap-2">
+            <button className="flex items-center gap-2 rounded-full bg-void-700 px-4 py-2 text-sm font-medium text-mist-300 ring-1 ring-white/10 hover:bg-void-600 transition-all">
+              <Settings className="h-4 w-4" /> Edit Profile
+            </button>
+            {user && (
+              <button
+                onClick={handleSignOut}
+                className="flex items-center gap-2 rounded-full bg-ember-500/10 px-4 py-2 text-sm font-medium text-ember-400 ring-1 ring-ember-500/20 hover:bg-ember-500/20 transition-all"
+              >
+                <LogOut className="h-4 w-4" /> Sign out
+              </button>
+            )}
+            {!user && (
+              <Link
+                to="/login"
+                className="flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-ember-400"
+              >
+                Sign in
+              </Link>
+            )}
+          </div>
         </div>
       </motion.div>
 
@@ -101,7 +137,7 @@ export function Profile() {
         className="grid grid-cols-2 gap-4 sm:grid-cols-3"
       >
         {[
-          { icon: Heart, label: 'My Favorites', count: favorites.length, to: '/favorites', color: 'text-ember-400' },
+          { icon: Heart, label: 'Watchlist', count: favorites.length, to: '/favorites', color: 'text-ember-400' },
           { icon: Clock, label: 'Watch History', count: history.length, to: '/history', color: 'text-dusk-400' },
           { icon: Star, label: 'Dashboard', count: null, to: '/dashboard', color: 'text-gilt-400' },
         ].map((item) => (

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
-import { Clapperboard, Menu, X, User } from 'lucide-react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Clapperboard, Menu, X, User, LogOut } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SearchBar } from '../SearchBar';
 import { cn } from '../../lib/utils';
+import { useAuth } from '../../context/AuthContext';
+import { toast } from '../ui/Toast';
 
 const links = [
     { to: '/', label: 'Home' },
@@ -17,6 +19,22 @@ const links = [
 export function Navbar() {
     const [scrolled, setScrolled] = useState(false);
     const [open, setOpen] = useState(false);
+    const { user, profile, signOut } = useAuth();
+    const navigate = useNavigate();
+
+    const initials = profile?.name
+        ? profile.name.trim().split(/\s+/).map((w) => w[0]).slice(0, 1).join('').toUpperCase()
+        : user?.email?.[0]?.toUpperCase() ?? null;
+
+    async function handleSignOut() {
+        try {
+            await signOut();
+            toast('Signed out');
+            navigate('/login');
+        } catch {
+            toast('Failed to sign out', 'error');
+        }
+    }
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 12);
@@ -61,13 +79,25 @@ export function Navbar() {
                     <div className="max-w-xs flex-1">
                         <SearchBar compact />
                     </div>
-                    <Link
-                        to="/profile"
-                        aria-label="Profile"
-                        className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 ring-1 ring-white/10 hover:bg-white/10 transition-colors"
-                    >
-                        <User className="h-4 w-4 text-mist-100" />
-                    </Link>
+                    {user ? (
+                        <div className="relative group">
+                            <Link
+                                to="/profile"
+                                aria-label="Profile"
+                                className="flex h-9 w-9 items-center justify-center rounded-full bg-ember-500/20 ring-1 ring-ember-500/30 text-xs font-bold text-ember-300 hover:bg-ember-500/30 transition-colors"
+                            >
+                                {initials ?? <User className="h-4 w-4" />}
+                            </Link>
+                        </div>
+                    ) : (
+                        <Link
+                            to="/login"
+                            aria-label="Sign in"
+                            className="flex h-9 items-center gap-1.5 rounded-full bg-white/5 px-3 ring-1 ring-white/10 hover:bg-white/10 transition-colors text-xs font-medium text-mist-100"
+                        >
+                            <User className="h-3.5 w-3.5" /> Sign in
+                        </Link>
+                    )}
                 </div>
 
                 <button
@@ -106,6 +136,19 @@ export function Navbar() {
                             <NavLink to="/profile" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-mist-300">
                                 Profile
                             </NavLink>
+                            {user && (
+                                <button
+                                    onClick={() => { setOpen(false); handleSignOut(); }}
+                                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ember-400 text-left"
+                                >
+                                    <LogOut className="h-4 w-4" /> Sign out
+                                </button>
+                            )}
+                            {!user && (
+                                <NavLink to="/login" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium text-ember-400">
+                                    Sign in
+                                </NavLink>
+                            )}
                         </div>
                     </motion.div>
                 )}

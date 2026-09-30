@@ -1,0 +1,26 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "watchedMovies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "watchedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "watchlist",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "addedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recommendationHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recommendedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
