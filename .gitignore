@@ -1,2 +1,6 @@
 *.csv
 CReqx/Backend/Dataset/
+.env
+.env.*
+!.env.example
+
