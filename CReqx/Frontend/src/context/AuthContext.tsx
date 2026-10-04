@@ -16,6 +16,9 @@ import {
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+  GithubAuthProvider,
   type User,
 } from 'firebase/auth';
 import { auth } from '../lib/firebase';
@@ -32,6 +35,8 @@ interface AuthContextValue {
   loading: boolean;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signInWithGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   /** Refresh profile from Firestore (e.g. after profile edit). */
@@ -90,6 +95,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(existing ?? (await getUserProfile(credential.user.uid)));
   };
 
+  const signInWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    const credential = await signInWithPopup(auth, provider);
+    const { user: fbUser } = credential;
+    const existing = await getUserProfile(fbUser.uid);
+    if (!existing) {
+      await createUserProfile(fbUser.uid, {
+        name: fbUser.displayName ?? fbUser.email?.split('@')[0] ?? 'User',
+        email: fbUser.email ?? '',
+        username: fbUser.email?.split('@')[0] ?? fbUser.uid,
+      });
+    }
+    const p = await getUserProfile(fbUser.uid);
+    setProfile(p);
+  };
+
+  const signInWithGitHub = async () => {
+    const provider = new GithubAuthProvider();
+    const credential = await signInWithPopup(auth, provider);
+    const { user: fbUser } = credential;
+    const existing = await getUserProfile(fbUser.uid);
+    if (!existing) {
+      await createUserProfile(fbUser.uid, {
+        name: fbUser.displayName ?? fbUser.email?.split('@')[0] ?? 'User',
+        email: fbUser.email ?? '',
+        username: fbUser.email?.split('@')[0] ?? fbUser.uid,
+      });
+    }
+    const p = await getUserProfile(fbUser.uid);
+    setProfile(p);
+  };
+
   const signOut = async () => {
     await firebaseSignOut(auth);
     setProfile(null);
@@ -110,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, resetPassword, refreshProfile }}>
+    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signInWithGoogle, signInWithGitHub, signOut, resetPassword, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
