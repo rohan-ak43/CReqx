@@ -1,11 +1,11 @@
 # Data pipeline + model
-pandas>=2.1
-numpy>=1.26
-scipy>=1.11
-scikit-learn>=1.4
+pandas==2.3.1
+numpy==2.2.6
+scipy==1.16.1
+scikit-learn==1.5.2
 
 # API layer
-flask>=3.0
+Flask==3.1.1
 python-dotenv>=1.0
 
 # Firebase was tried earlier in this project's history and removed
