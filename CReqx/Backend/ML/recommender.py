@@ -131,4 +131,5 @@ class CReqxRecommender:
     def _format(self, scores: pd.Series) -> pd.DataFrame:
         out = self.catalog.loc[scores.index, ["title", "genres", "vote_average"]].copy()
         out["score"] = scores.values
+        out.index.name = "tmdbId"
         return out.reset_index()
