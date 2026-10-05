@@ -1,0 +1,24 @@
+# Data pipeline + model
+pandas>=2.1
+numpy>=1.26
+scipy>=1.11
+scikit-learn>=1.4
+
+# API layer
+flask>=3.0
+python-dotenv>=1.0
+
+# Firebase was tried earlier in this project's history and removed
+# (see git log) — there is no firebase_client.py in the current repo.
+# Leaving this commented out rather than silently dropping it, since it's
+# a reasonable choice for persistence later; uncomment if you pick it.
+# firebase-admin>=6.4
+
+# Firebase (existing backend — needed if firebase_client.py runs alongside ml/api.py)
+firebase-admin>=6.4
+
+# Production WSGI server (optional — for deploying app.py, not needed for local dev)
+gunicorn>=21.2
+
+# Tests
+pytest>=8.0
