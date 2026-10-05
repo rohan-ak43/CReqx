@@ -1,3 +1,4 @@
+//CReqx/Frontend/src/pages/RecommendationEngine.tsx
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, ChevronRight, RefreshCw, Film, Disc, Clapperboard, Globe, Zap, Target, Moon, User, Heart, Users, Home, History } from 'lucide-react';
@@ -9,7 +10,6 @@ import { MovieGridSkeleton } from '../components/ui/LoadingSkeleton';
 import type { DiscoverParams } from '../lib/tmdb';
 import { useAuth } from '../context/AuthContext';
 import { saveRecommendationHistory, getRecommendationHistory, type RecommendationHistoryDoc } from '../lib/firestoreService';
-import { toast } from '../components/ui/Toast';
 
 const questions = [
   {
@@ -17,29 +17,29 @@ const questions = [
     question: 'Preferred era?',
     options: [
       { value: 'classic', label: 'Classic (Pre-2000)', icon: Film },
-      { value: 'modern',  label: 'Modern (2000s)',     icon: Disc },
-      { value: 'recent',  label: 'Recent (2015+)',     icon: Clapperboard },
-      { value: 'any',     label: 'Any era',            icon: Globe },
+      { value: 'modern', label: 'Modern (2000s)', icon: Disc },
+      { value: 'recent', label: 'Recent (2015+)', icon: Clapperboard },
+      { value: 'any', label: 'Any era', icon: Globe },
     ],
   },
   {
     id: 'length',
     question: 'How long is your evening?',
     options: [
-      { value: 'short',  label: 'Quick (<90 min)',        icon: Zap },
-      { value: 'medium', label: 'Standard (90–120 min)',  icon: Target },
-      { value: 'long',   label: 'Epic (120+ min)',        icon: Moon },
-      { value: 'any',    label: "Doesn't matter",         icon: Star },
+      { value: 'short', label: 'Quick (<90 min)', icon: Zap },
+      { value: 'medium', label: 'Standard (90–120 min)', icon: Target },
+      { value: 'long', label: 'Epic (120+ min)', icon: Moon },
+      { value: 'any', label: "Doesn't matter", icon: Star },
     ],
   },
   {
     id: 'company',
     question: "Who's watching with you?",
     options: [
-      { value: 'solo',    label: 'Just me',    icon: User },
+      { value: 'solo', label: 'Just me', icon: User },
       { value: 'partner', label: 'Date night', icon: Heart },
-      { value: 'friends', label: 'Friends',    icon: Users },
-      { value: 'family',  label: 'Family',     icon: Home },
+      { value: 'friends', label: 'Friends', icon: Users },
+      { value: 'family', label: 'Family', icon: Home },
     ],
   },
 ];
@@ -61,14 +61,14 @@ function answersToDiscoverParams(answers: Record<string, string>): DiscoverParam
   }
 
   // Length
-  if (answers.length === 'short')  params.withRuntimeLte = 89;
+  if (answers.length === 'short') params.withRuntimeLte = 89;
   if (answers.length === 'medium') { params.withRuntimeGte = 90; params.withRuntimeLte = 120; }
-  if (answers.length === 'long')   params.withRuntimeGte = 121;
+  if (answers.length === 'long') params.withRuntimeGte = 121;
 
   // Company
   if (answers.company === 'partner') params.genreIds = [10749, 18]; // Romance, Drama
   if (answers.company === 'friends') params.genreIds = [35, 28, 53]; // Comedy, Action, Thriller
-  if (answers.company === 'family')  params.genreIds = [10751, 16, 12]; // Family, Animation, Adventure
+  if (answers.company === 'family') params.genreIds = [10751, 16, 12]; // Family, Animation, Adventure
 
   return params;
 }
@@ -76,8 +76,8 @@ function answersToDiscoverParams(answers: Record<string, string>): DiscoverParam
 export function RecommendationEngine() {
   const { user } = useAuth();
 
-  const [answers, setAnswers]         = useState<Record<string, string>>({});
-  const [step, setStep]               = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [step, setStep] = useState(0);
   const [showResults, setShowResults] = useState(false);
   const [finalParams, setFinalParams] = useState<DiscoverParams | null>(null);
   const [savedAnswers, setSavedAnswers] = useState<Record<string, string>>({});
@@ -85,14 +85,14 @@ export function RecommendationEngine() {
   // UI state for recommendation history panel
   const [showHistory, setShowHistory] = useState(false);
 
-  const current  = questions[step];
+  const current = questions[step];
   const progress = (step / questions.length) * 100;
 
   // ── Fetch recommendations from TMDB (unchanged ML logic) ───────────────────
   const { data, isLoading } = useQuery({
     queryKey: ['recommendations', finalParams],
-    queryFn:  () => tmdbService.discover({ ...finalParams!, page: 1 }),
-    enabled:  showResults && !!finalParams,
+    queryFn: () => tmdbService.discover({ ...finalParams!, page: 1 }),
+    enabled: showResults && !!finalParams,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -110,8 +110,8 @@ export function RecommendationEngine() {
   // ── Fetch past recommendation history ─────────────────────────────────────
   const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ['recommendation-history', user?.uid],
-    queryFn:  () => getRecommendationHistory(user!.uid, 10),
-    enabled:  showHistory && !!user,
+    queryFn: () => getRecommendationHistory(user!.uid, 10),
+    enabled: showHistory && !!user,
     staleTime: 2 * 60 * 1000,
   });
 
