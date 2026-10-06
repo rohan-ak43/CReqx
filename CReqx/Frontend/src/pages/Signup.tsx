@@ -78,7 +78,7 @@ export function Signup() {
                         {...register('password', {
                             required: 'Password is required',
                             minLength: { value: 8, message: 'At least 8 characters' },
-                            onChange: (e) => setPassword(e.target.value),
+                            onChange: (e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value),
                         })}
                     />
                 </Field>

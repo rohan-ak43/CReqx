@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, Clock, Star, Settings, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/ui/Toast';
+import { EditProfileModal } from '../components/profile/EditProfileModal';
 
 const GENRES = ['Action', 'Sci-Fi', 'Drama', 'Thriller', 'Comedy', 'Romance', 'Animation', 'Horror'];
 
@@ -11,9 +13,11 @@ export function Profile() {
   const { favorites, history } = useAppStore();
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const displayName  = profile?.name  ?? user?.displayName ?? 'Guest';
   const displayEmail = profile?.email ?? user?.email       ?? '';
+  const displayBio   = profile?.bio && profile.bio.trim().length > 0 ? profile.bio : 'Movie enthusiast';
   const initials     = displayName.trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 
   const topGenres = (() => {
@@ -23,6 +27,10 @@ export function Profile() {
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([g]) => g);
   })();
+
+  // Derived favorite genres: user explicitly selected or top watched/favorited genres
+  const selectedGenres = profile?.favoriteGenres ?? [];
+  const primaryTopGenre = selectedGenres.length > 0 ? selectedGenres[0] : (topGenres[0] ?? '—');
 
   async function handleSignOut() {
     try {
@@ -54,9 +62,9 @@ export function Profile() {
             <h1 className="font-display text-2xl font-bold text-mist-100">{displayName}</h1>
             <p className="text-sm text-mist-500">{displayEmail}</p>
             {profile?.username && (
-              <p className="mt-0.5 text-sm text-mist-400">@{profile.username}</p>
+              <p className="mt-0.5 text-sm text-mist-400 font-medium">@{profile.username}</p>
             )}
-            <p className="mt-1.5 text-sm text-mist-400">Movie enthusiast</p>
+            <p className="mt-1.5 text-sm text-mist-300 leading-relaxed max-w-md">{displayBio}</p>
             <div className="mt-4 flex flex-wrap justify-center gap-4 sm:justify-start">
               <div className="text-center">
                 <p className="text-xl font-bold font-display text-mist-100">{history.length}</p>
@@ -67,20 +75,24 @@ export function Profile() {
                 <p className="text-xs text-mist-500">Watchlist</p>
               </div>
               <div className="text-center">
-                <p className="text-xl font-bold font-display text-mist-100">{topGenres[0] ?? '—'}</p>
+                <p className="text-xl font-bold font-display text-mist-100">{primaryTopGenre}</p>
                 <p className="text-xs text-mist-500">Top Genre</p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <button className="flex items-center gap-2 rounded-full bg-void-700 px-4 py-2 text-sm font-medium text-mist-300 ring-1 ring-white/10 hover:bg-void-600 transition-all">
+            <button
+              onClick={() => setIsEditOpen(true)}
+              id="btn-edit-profile"
+              className="flex items-center justify-center gap-2 rounded-full bg-void-700 px-4 py-2 text-sm font-medium text-mist-300 ring-1 ring-white/10 hover:bg-void-600 hover:text-white transition-all cursor-pointer"
+            >
               <Settings className="h-4 w-4" /> Edit Profile
             </button>
             {user && (
               <button
                 onClick={handleSignOut}
-                className="flex items-center gap-2 rounded-full bg-ember-500/10 px-4 py-2 text-sm font-medium text-ember-400 ring-1 ring-ember-500/20 hover:bg-ember-500/20 transition-all"
+                className="flex items-center justify-center gap-2 rounded-full bg-ember-500/10 px-4 py-2 text-sm font-medium text-ember-400 ring-1 ring-ember-500/20 hover:bg-ember-500/20 transition-all cursor-pointer"
               >
                 <LogOut className="h-4 w-4" /> Sign out
               </button>
@@ -88,7 +100,7 @@ export function Profile() {
             {!user && (
               <Link
                 to="/login"
-                className="flex items-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-ember-400"
+                className="flex items-center justify-center gap-2 rounded-full bg-ember-500 px-4 py-2 text-sm font-medium text-white transition-all hover:bg-ember-400"
               >
                 Sign in
               </Link>
@@ -104,27 +116,38 @@ export function Profile() {
         transition={{ delay: 0.1 }}
         className="glass mb-6 rounded-2xl p-6"
       >
-        <h2 className="font-display text-lg font-bold text-mist-100 mb-4">Genre Preferences</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-lg font-bold text-mist-100">Genre Preferences</h2>
+          <button
+            onClick={() => setIsEditOpen(true)}
+            className="text-xs text-ember-400 hover:text-ember-300 transition-colors font-medium"
+          >
+            Edit Preferences
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {GENRES.map((g) => {
+            const isSelected = selectedGenres.includes(g);
             const isTop = topGenres.includes(g);
+            const active = isSelected || isTop;
+
             return (
               <span
                 key={g}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
-                  isTop
-                    ? 'bg-ember-500 text-white shadow-lg shadow-ember-500/20'
+                className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                  active
+                    ? 'bg-ember-500 text-white shadow-lg shadow-ember-500/20 ring-1 ring-ember-400'
                     : 'bg-void-800 text-mist-400 ring-1 ring-white/10'
                 }`}
               >
-                {g} {isTop && '★'}
+                {g} {active && '★'}
               </span>
             );
           })}
         </div>
-        {topGenres.length === 0 && (
-          <p className="mt-2 text-xs text-mist-500">
-            Watch and favourite movies to discover your top genres.
+        {selectedGenres.length === 0 && topGenres.length === 0 && (
+          <p className="mt-3 text-xs text-mist-500">
+            Click "Edit Profile" to choose your favorite genres, or watch movies to discover them.
           </p>
         )}
       </motion.div>
@@ -154,6 +177,12 @@ export function Profile() {
           </Link>
         ))}
       </motion.div>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+      />
     </div>
   );
 }

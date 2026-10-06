@@ -26,7 +26,10 @@ export interface FirestoreUserProfile {
   name: string;
   email: string;
   username: string;
-  createdAt: Timestamp | null;
+  bio?: string;
+  favoriteGenres?: string[];
+  createdAt?: Timestamp | null;
+  updatedAt?: Timestamp | null;
 }
 
 export interface WatchedMovieDoc {
@@ -85,6 +88,29 @@ export async function createUserProfile(
       createdAt: serverTimestamp(),
     },
     { merge: true } // won't overwrite createdAt on subsequent calls
+  );
+}
+
+/** Update specific fields on a user's profile document in Firestore. */
+export async function updateUserProfile(
+  uid: string,
+  data: {
+    name: string;
+    username: string;
+    bio?: string;
+    favoriteGenres?: string[];
+  }
+): Promise<void> {
+  await setDoc(
+    userRef(uid),
+    {
+      name: data.name.trim(),
+      username: data.username.trim(),
+      bio: (data.bio ?? '').trim(),
+      favoriteGenres: data.favoriteGenres ?? [],
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
   );
 }
 
