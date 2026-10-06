@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { AuthLayout, SocialAuthButtons } from '../components/auth/AuthLayout';
 import { toast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +14,13 @@ interface LoginValues {
 export function Login() {
     const navigate = useNavigate();
     const { signIn } = useAuth();
-    const { register, handleSubmit, formState: { errors, isSubmitting }, setError } = useForm<LoginValues>();
+    const [showPassword, setShowPassword] = useState(false);
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+        setError,
+    } = useForm<LoginValues>();
 
     async function onSubmit({ email, password }: LoginValues) {
         try {
@@ -22,7 +29,11 @@ export function Login() {
             navigate('/');
         } catch (err: unknown) {
             const code = (err as { code?: string }).code ?? '';
-            if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+            if (
+                code === 'auth/invalid-credential' ||
+                code === 'auth/wrong-password' ||
+                code === 'auth/user-not-found'
+            ) {
                 setError('password', { message: 'Invalid email or password' });
             } else if (code === 'auth/too-many-requests') {
                 toast('Too many attempts. Please wait and try again.', 'error');
@@ -33,57 +44,130 @@ export function Login() {
     }
 
     return (
-        <AuthLayout title="Welcome back" subtitle="Sign in to pick up your recommendations">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <Field label="Email" error={errors.email?.message}>
-                    <Mail className="h-4 w-4 text-mist-500" />
+        <AuthLayout
+            title="Welcome back"
+            subtitle="Sign in to continue discovering movies you'll love."
+        >
+            <form onSubmit={handleSubmit(onSubmit)} noValidate>
+                {/* Email field */}
+                <Field
+                    label="Email address"
+                    htmlFor="login-email"
+                    error={errors.email?.message}
+                >
+                    <Mail className="auth-input__icon" aria-hidden="true" />
                     <input
+                        id="login-email"
                         type="email"
-                        placeholder="you@email.com"
-                        className="w-full bg-transparent text-sm text-mist-100 placeholder:text-mist-500 focus:outline-none"
-                        {...register('email', { required: 'Email is required', pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email' } })}
-                    />
-                </Field>
-                <Field label="Password" error={errors.password?.message}>
-                    <Lock className="h-4 w-4 text-mist-500" />
-                    <input
-                        type="password"
-                        placeholder="••••••••"
-                        className="w-full bg-transparent text-sm text-mist-100 placeholder:text-mist-500 focus:outline-none"
-                        {...register('password', { required: 'Password is required', minLength: { value: 6, message: 'At least 6 characters' } })}
+                        placeholder="Enter your email"
+                        autoComplete="email"
+                        className="auth-input__field"
+                        {...register('email', {
+                            required: 'Email is required',
+                            pattern: {
+                                value: /^\S+@\S+\.\S+$/,
+                                message: 'Enter a valid email',
+                            },
+                        })}
                     />
                 </Field>
 
-                <div className="flex justify-end">
-                    <Link to="/forgot-password" className="text-xs text-mist-400 hover:text-mist-100">Forgot password?</Link>
+                {/* Password field */}
+                <Field
+                    label="Password"
+                    htmlFor="login-password"
+                    error={errors.password?.message}
+                >
+                    <Lock className="auth-input__icon" aria-hidden="true" />
+                    <input
+                        id="login-password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        autoComplete="current-password"
+                        className="auth-input__field"
+                        {...register('password', {
+                            required: 'Password is required',
+                            minLength: { value: 6, message: 'At least 6 characters' },
+                        })}
+                    />
+                    <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="auth-input__toggle"
+                    >
+                        {showPassword ? (
+                            <EyeOff className="auth-input__toggle-icon" />
+                        ) : (
+                            <Eye className="auth-input__toggle-icon" />
+                        )}
+                    </button>
+                </Field>
+
+                {/* Forgot password */}
+                <div className="auth-forgot">
+                    <Link to="/forgot-password" className="auth-forgot__link" id="forgot-password-link">
+                        Forgot password?
+                    </Link>
                 </div>
 
+                {/* Primary submit button */}
                 <button
                     type="submit"
+                    id="btn-login-submit"
                     disabled={isSubmitting}
-                    className="w-full rounded-full bg-ember-500 py-2.5 text-sm font-semibold text-white shadow-lg shadow-ember-500/25 disabled:opacity-50"
+                    className="auth-btn-primary"
                 >
-                    {isSubmitting ? 'Signing in…' : 'Sign in'}
+                    {isSubmitting ? (
+                        <>
+                            <span className="auth-social__spinner" />
+                            Signing in…
+                        </>
+                    ) : (
+                        'Sign in'
+                    )}
                 </button>
             </form>
 
             <SocialAuthButtons />
 
-            <p className="mt-6 text-center text-sm text-mist-500">
-                New here? <Link to="/signup" className="font-medium text-ember-400 hover:text-ember-300">Create an account</Link>
+            <p className="auth-signup-prompt">
+                Don't have an account?{' '}
+                <Link to="/signup" className="auth-signup-prompt__link" id="link-create-account">
+                    Create an account
+                </Link>
             </p>
         </AuthLayout>
     );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+// ─── Shared Field component ────────────────────────────────────────────────────
+
+function Field({
+    label,
+    htmlFor,
+    error,
+    children,
+}: {
+    label: string;
+    htmlFor: string;
+    error?: string;
+    children: React.ReactNode;
+}) {
     return (
-        <label className="block">
-            <span className="mb-1 block text-xs font-medium text-mist-400">{label}</span>
-            <div className="flex items-center gap-2 rounded-xl bg-void-800/60 px-3 py-2.5 ring-1 ring-white/10 focus-within:ring-ember-500/60">
+        <div className="auth-field">
+            <label htmlFor={htmlFor} className="auth-field__label">
+                {label}
+            </label>
+            <div className={`auth-input${error ? ' auth-input--error' : ''}`}>
                 {children}
             </div>
-            {error && <span className="mt-1 block text-xs text-ember-400">{error}</span>}
-        </label>
+            {error && (
+                <span role="alert" className="auth-field__error">
+                    {error}
+                </span>
+            )}
+        </div>
     );
 }
